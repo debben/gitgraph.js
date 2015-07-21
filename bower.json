@@ -1,8 +1,14 @@
 {
   "name": "gitgraph.js",
   "version": "1.0.3",
-  "main": [ "./build/gitgraph.js", "./build/gitgraph.css" ],
+  "main": [
+    "./build/gitgraph.js",
+    "./build/gitgraph.css"
+  ],
   "ignore": [
     "**/.*"
-  ]
+  ],
+  "dependencies": {
+    "snap.svg": "~0.4.1"
+  }
 }

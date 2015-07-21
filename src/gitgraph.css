@@ -31,3 +31,7 @@
   width: 600px;
   display: none;
 }
+
+.gitgraph path {
+  fill:none;
+}

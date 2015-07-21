@@ -114,3 +114,5 @@ test.commit( "It's works !" );
 gitGraph.canvas.addEventListener( "commit:mouseover", function ( event ) {
   console.log( "You're over a commit.", "Here is a bunch of data ->", event.data );
 } );
+
+gitGraph.render();

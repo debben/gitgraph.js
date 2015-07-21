@@ -100,7 +100,56 @@
 
     // Canvas init
     this.canvas = document.getElementById( this.elementId ) || options.canvas;
-    this.context = this.canvas.getContext( "2d" );
+    this.context = Snap(document.getElementById( this.elementId ) || options.canvas);// this.canvas.getContext( "2d" );
+
+    this.context.x = 0;
+    this.context.y = 0;
+    this.offsetX = 0;
+    this.offsetY = 0;
+
+    this.context.moveTo = function(x, y){
+      this.x = x;
+      this.y = y;
+    };
+
+    this.context.translate = function(x, y){
+      this.offsetX=x;
+      this.offsetY=y;
+    }
+
+    this.context.lineTo = function(x, y){
+      var retval = this.line(this.x, this.y, x, y);
+      this.x=x;
+      this.y=y;
+      return retval;
+    };
+
+    this.context.bezierCurveTo = function(x2, y2, x1, y1, x, y)
+    {
+      /*x1 += this.offsetX;
+      y1 += this.offsetY;
+      x += this.offsetX;
+      y += this.offsetY;*/
+
+      var retval = this.path('M'+(this.x + this.offsetX) + ' ' + (this.y + this.offsetY ) +
+                             ' C' + (x2 + this.offsetX) + ' ' + (y2 + this.offsetY) +
+                             ' ' + (x1 + this.offsetX) + ' ' + (y1 + this.offsetY) +
+                             ' ' + (x + this.offsetX) + ' ' + (y + this.offsetY));
+      this.x=x;
+      this.y=y;
+      return retval;
+    };
+
+    this.context.relativeCircle = function(x, y, rad){
+      x += this.offsetX;
+      y += this.offsetY;
+      // do offset
+      return this.circle(x, y, rad);
+    };
+
+    this.context.fillText = function(message, x, y){
+      return this.text(this.offsetX + x, this.offsetY + y, message);
+    }
 
     // Tooltip layer
     this.tooltip = document.createElement( "div" );
@@ -264,22 +313,20 @@
     this.canvas.width = unscaledResolution.x * scalingFactor;
     this.canvas.height = unscaledResolution.y * scalingFactor;
 
-    this.context.scale( scalingFactor, scalingFactor );
-
     // Clear All
-    this.context.clearRect( 0, 0, this.canvas.width, this.canvas.height );
+    this.context.clear();
 
     // Add some margin
     this.context.translate( this.marginX, this.marginY );
 
     // Translate for inverse orientation
     if ( this.template.commit.spacingY > 0 ) {
-      this.context.translate( 0, this.canvas.height - this.marginY * 2 );
-      this.offsetY = this.canvas.height - this.marginY * 2;
+      this.context.translate( 0, this.canvas.height.baseVal.value - this.marginY * 2 );
+      this.offsetY = this.canvas.height.baseVal.value - this.marginY * 2;
     }
     if ( this.template.commit.spacingX > 0 ) {
-      this.context.translate( this.canvas.width - this.marginX * 2, 0 );
-      this.offsetX = this.canvas.width - this.marginX * 2;
+      this.context.translate( this.canvas.width.baseVal.value - this.marginX * 2, 0 );
+      this.offsetX = this.canvas.width.baseVal.value - this.marginX * 2;
     }
 
     // Render branchs
@@ -447,33 +494,36 @@
    * @this Branch
    **/
   Branch.prototype.render = function () {
-    this.context.beginPath();
-
     for ( var i = 0, point; !!(point = this.path[ i ]); i++ ) {
+      var line;
       if ( point.type === "start" ) {
         this.context.moveTo( point.x, point.y );
       } else {
         if ( this.template.branch.mergeStyle === "bezier" ) {
           var path = this.path[ i - 1 ];
 
-          this.context.bezierCurveTo(
+          line = this.context.bezierCurveTo(
             path.x - this.template.commit.spacingX / 2, path.y - this.template.commit.spacingY / 2,
             point.x + this.template.commit.spacingX / 2, point.y + this.template.commit.spacingY / 2,
             point.x, point.y
           );
         } else {
-          this.context.lineTo( point.x, point.y );
+          line = this.context.lineTo( point.x, point.y );
         }
       }
+
+      if(line){
+        line.attr({
+          stroke: this.color,
+          strokeWidth: this.lineWidth
+        });
+      }
+
+  	  if ( this.context.setLineDash !== undefined ) {
+  		  line.attr({strokeDasharray:this.lineDash});
+  	  }
     }
 
-    this.context.lineWidth = this.lineWidth;
-    this.context.strokeStyle = this.color;
-    if ( this.context.setLineDash !== undefined ) {
-      this.context.setLineDash( this.lineDash );
-    }
-    this.context.stroke();
-    this.context.closePath();
   };
 
   /**
@@ -580,9 +630,6 @@
       this.parent.commitOffsetY -= commit.detail.clientHeight - 40;
     }
 
-    // Auto-render
-    this.parent.render();
-
     // Return the main object so we can chain
     return this;
   };
@@ -655,9 +702,6 @@
 
     endOfBranch.type = "start";
     this.path.push( endOfBranch ); // End of branch for future commits
-
-    // Auto-render
-    this.parent.render();
 
     // Checkout on target
     this.parent.HEAD = targetBranch;
@@ -769,18 +813,16 @@
    **/
   Commit.prototype.render = function () {
     // Dot
-    this.context.beginPath();
-    this.context.arc( this.x, this.y, this.dotSize, 0, 2 * Math.PI, false );
-    this.context.fillStyle = this.dotColor;
-    this.context.strokeStyle = this.dotStrokeColor;
-    this.context.lineWidth = this.dotStrokeWidth;
+    var circle = this.context.relativeCircle(this.x, this.y, this.dotSize);
+
+    circle.attr({
+      fill: this.dotColor,
+      stroke: this.dotStrokeColor
+    });
 
     if ( typeof (this.dotStrokeWidth) === "number" ) {
-      this.context.stroke();
+	  circle.attr({strokeWidth: this.dotStrokeWidth});
     }
-
-    this.context.fill();
-    this.context.closePath();
 
     // Arrow
     if ( this.arrowDisplay && this.parentCommit instanceof Commit ) {
@@ -807,9 +849,11 @@
         message = (this.branch.name ? "[" + this.branch.name + "] " : "") + message;
       }
 
-      this.context.font = this.messageFont;
-      this.context.fillStyle = this.messageColor;
-      this.context.fillText( message, (this.parent.columnMax + 1) * this.template.branch.spacingX, this.y + 3 );
+      var text = this.context.fillText(message, (this.parent.columnMax + 1) * this.template.branch.spacingX, this.y + 3);
+      text.attr({
+        fill: this.messageColor,
+        font: this.messageFont
+      });
     }
   };
 
