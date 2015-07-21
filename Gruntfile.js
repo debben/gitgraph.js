@@ -101,7 +101,7 @@ module.exports = function ( grunt ) {
     // The `jasmine` task run unit tests over the source code
     jasmine: {
       gitgraph: {
-        src: "src/*.js",
+        src: ["bower_components/snap.svg/dist/snap.svg.js","src/*.js"],
         options: {
           specs: "tests/*.js"
         }

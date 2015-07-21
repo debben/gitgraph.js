@@ -4,7 +4,7 @@ describe( "Gitgraph.js", function () {
 
   beforeEach( function () {
     document.body = document.createElement( "body" );
-    canvas = document.createElement( "canvas" );
+    canvas = document.createElement( "svg" );
   } );
 
   describe( "Gitgraph", function () {
